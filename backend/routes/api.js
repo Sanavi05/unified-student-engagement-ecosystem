@@ -68,4 +68,37 @@ router.post('/ai/timeline', async (req, res) => {
   }
 });
 
+// Proxy route for Loan Eligibility Check
+router.post('/finance/eligibility', async (req, res) => {
+  try {
+    const aiResponse = await axios.post(`${process.env.FASTAPI_URL}/finance/eligibility`, req.body);
+    res.json(aiResponse.data);
+  } catch (error) {
+    console.error('FastAPI finance eligibility error:', error.message);
+    res.status(500).json({ error: 'AI eligibility service unavailable' });
+  }
+});
+
+// Proxy route for Loan Offer Advice
+router.post('/finance/loan-advice', async (req, res) => {
+  try {
+    const aiResponse = await axios.post(`${process.env.FASTAPI_URL}/finance/loan-advice`, req.body);
+    res.json(aiResponse.data);
+  } catch (error) {
+    console.error('FastAPI loan advice error:', error.message);
+    res.status(500).json({ error: 'AI loan advice service unavailable' });
+  }
+});
+
+// Proxy route for Chatbot (Gemini)
+router.post('/chat', async (req, res) => {
+  try {
+    const aiResponse = await axios.post(`${process.env.FASTAPI_URL}/chat`, req.body);
+    res.json(aiResponse.data);
+  } catch (error) {
+    console.error('FastAPI chat error:', error.message);
+    res.status(500).json({ error: 'Chat service unavailable' });
+  }
+});
+
 export default router;

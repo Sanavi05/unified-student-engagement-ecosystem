@@ -21,7 +21,7 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 print("=" * 70)
-print("🔍 Checking Available Gemini Models")
+print("Checking Available Gemini Models")
 print("=" * 70)
 print()
 

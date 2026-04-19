@@ -15,11 +15,11 @@
           <div class="form-row">
             <div class="form-group">
               <label>Family Income (Annual)</label>
-              <input type="number" placeholder="e.g. 1500000" />
+              <input type="number" v-model="eligibilityForm.income" placeholder="e.g. 1500000" />
             </div>
             <div class="form-group">
               <label>Co-applicant Status</label>
-              <select>
+              <select v-model="eligibilityForm.coApplicant">
                 <option>Salaried</option>
                 <option>Self-Employed</option>
                 <option>None</option>
@@ -28,14 +28,37 @@
           </div>
           <div class="form-group">
             <label>University Tier</label>
-            <select>
+            <select v-model="eligibilityForm.universityTier">
               <option>Tier 1 (Ivy League, Top 50)</option>
               <option>Tier 2 (Top 200)</option>
               <option>Tier 3 (Others)</option>
             </select>
           </div>
-          <button type="button" class="btn-primary w-100" @click="checkEligibility">Check Eligibility</button>
+          <button type="button" class="btn-primary w-100" @click="checkEligibility" :disabled="loadingEligibility">
+            {{ loadingEligibility ? 'Analyzing with AI...' : 'Check Eligibility' }}
+          </button>
         </form>
+
+        <!-- AI Eligibility Result -->
+        <div v-if="eligibilityResult" class="ai-result mt-1">
+          <div class="eligibility-score">
+            <div class="score-badge" :class="eligibilityResult.eligible ? 'eligible' : 'not-eligible'">
+              {{ eligibilityResult.eligible ? '✓ Eligible' : '✗ Not Eligible' }}
+            </div>
+            <div class="score-details">
+              <span class="score-label">Score</span>
+              <span class="score-value">{{ eligibilityResult.eligibilityScore }}</span>
+            </div>
+            <div class="score-details">
+              <span class="score-label">Max Loan</span>
+              <span class="score-value">{{ eligibilityResult.maxLoanAmount }}</span>
+            </div>
+          </div>
+          <p class="ai-summary">{{ eligibilityResult.summary }}</p>
+          <ul class="ai-tips">
+            <li v-for="tip in eligibilityResult.tips" :key="tip">{{ tip }}</li>
+          </ul>
+        </div>
       </div>
 
       <!-- EMI Calculator -->
@@ -53,7 +76,6 @@
         </div>
       </div>
 
-      <!-- Dynamic Loan Offers -->
       <div class="finance-card card offers" style="grid-column: 1 / -1;">
         <div class="card-header">
           <h3>Customized Loan Offers</h3>
@@ -79,7 +101,9 @@
                 <span class="value">1%</span>
               </div>
             </div>
-            <button class="btn-outline">Apply with AI</button>
+            <button class="btn-outline" @click="applyWithAI('HDFC Credila')" :disabled="loadingAdvice === 'HDFC Credila'">
+              {{ loadingAdvice === 'HDFC Credila' ? 'Fetching...' : 'Apply with AI' }}
+            </button>
           </div>
 
           <!-- Offer 2 -->
@@ -101,7 +125,23 @@
                 <span class="value">₹10,000</span>
               </div>
             </div>
-            <button class="btn-outline" @click="applyWithAI('SBI Global Ed-Vantage')">Apply with AI</button>
+            <button class="btn-outline" @click="applyWithAI('SBI Global Ed-Vantage')" :disabled="loadingAdvice === 'SBI Global Ed-Vantage'">
+              {{ loadingAdvice === 'SBI Global Ed-Vantage' ? 'Fetching...' : 'Apply with AI' }}
+            </button>
+          </div>
+
+          <!-- AI Loan Advice Result -->
+          <div v-if="loanAdvice" class="loan-advice-result">
+            <div class="advice-header">
+              <span class="advice-bank">AI Advice for {{ loanAdvice.bank }}</span>
+              <span class="advice-time">⏱ {{ loanAdvice.estimatedApprovalTime }}</span>
+            </div>
+            <p class="advice-text">{{ loanAdvice.recommendation }}</p>
+            <div class="advice-docs">
+              <span class="docs-label">📄 Documents needed:</span>
+              <span v-for="doc in loanAdvice.requiredDocuments" :key="doc" class="doc-chip">{{ doc }}</span>
+            </div>
+            <div class="advice-tip">💡 {{ loanAdvice.tip }}</div>
           </div>
         </div>
       </div>
@@ -111,6 +151,9 @@
 
 <script setup>
 import { ref } from 'vue';
+import axios from 'axios';
+
+const apiBase = 'http://localhost:3000/api';
 
 // EMI Calculator State
 const loanAmount = ref(3000000);
@@ -133,13 +176,57 @@ const calculateEMI = () => {
   }
 };
 
-const checkEligibility = () => {
-  alert('✅ Eligibility check initiated!\n\nBased on your profile:\n- Annual Income: Good\n- Co-applicant: Yes\n- University Tier: Tier 1\n\nYou are eligible for up to 50 Lakhs (+50% with co-applicant)');
+// Loan Eligibility State
+const eligibilityForm = ref({
+  income: null,
+  coApplicant: 'Salaried',
+  universityTier: 'Tier 1 (Ivy League, Top 50)'
+});
+const loadingEligibility = ref(false);
+const eligibilityResult = ref(null);
+
+const checkEligibility = async () => {
+  if (!eligibilityForm.value.income) {
+    alert('Please enter your family income.');
+    return;
+  }
+  loadingEligibility.value = true;
+  eligibilityResult.value = null;
+  try {
+    const res = await axios.post(`${apiBase}/finance/eligibility`, {
+      income: parseFloat(eligibilityForm.value.income),
+      coApplicant: eligibilityForm.value.coApplicant,
+      universityTier: eligibilityForm.value.universityTier
+    });
+    eligibilityResult.value = res.data;
+  } catch (err) {
+    console.error(err);
+    alert('Failed to connect to AI service. Make sure all servers are running.');
+  } finally {
+    loadingEligibility.value = false;
+  }
 };
 
-const applyWithAI = (bankName) => {
-  alert(`🎉 Redirecting to ${bankName} application form...\n\nOur AI will help fill your details automatically!`);
-  console.log(`Applying with ${bankName}`);
+// Loan Advice State
+const loadingAdvice = ref(null);
+const loanAdvice = ref(null);
+
+const applyWithAI = async (bankName) => {
+  loadingAdvice.value = bankName;
+  loanAdvice.value = null;
+  try {
+    const res = await axios.post(`${apiBase}/finance/loan-advice`, {
+      bankName,
+      income: parseFloat(eligibilityForm.value.income) || 1500000,
+      universityTier: eligibilityForm.value.universityTier
+    });
+    loanAdvice.value = res.data;
+  } catch (err) {
+    console.error(err);
+    alert('Failed to get loan advice. Make sure all servers are running.');
+  } finally {
+    loadingAdvice.value = null;
+  }
 };
 </script>
 
@@ -277,4 +364,104 @@ const applyWithAI = (bankName) => {
 
 .w-100 { width: 100%; }
 .mt-1 { margin-top: 1rem; }
+
+/* AI Result Styles */
+.ai-result {
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  animation: fadeIn 0.4s ease;
+}
+
+.eligibility-score {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.score-badge {
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.score-badge.eligible { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.score-badge.not-eligible { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.score-details {
+  display: flex;
+  flex-direction: column;
+}
+.score-label { font-size: 0.75rem; color: var(--text-secondary); }
+.score-value { font-weight: 700; color: var(--primary-color); }
+
+.ai-summary {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.ai-tips {
+  padding-left: 1.25rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.ai-tips li { margin-bottom: 0.25rem; }
+
+/* Loan Advice Result */
+.loan-advice-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  animation: fadeIn 0.4s ease;
+}
+
+.advice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.advice-bank { font-weight: 700; color: var(--primary-color); }
+.advice-time { font-size: 0.8rem; color: var(--text-secondary); }
+
+.advice-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.advice-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.docs-label { font-size: 0.8rem; color: var(--text-secondary); }
+.doc-chip {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+
+.advice-tip {
+  font-size: 0.82rem;
+  color: var(--secondary-color);
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>

@@ -18,9 +18,13 @@
           :key="index" 
           class="message-wrapper"
           :class="msg.sender === 'user' ? 'user-wrapper' : 'bot-wrapper'"
+          :id="'msg-' + index"
         >
-          <div class="message" :class="msg.sender">
-            {{ msg.text }}
+          <div 
+            class="message" 
+            :class="msg.sender"
+            v-html="msg.sender === 'bot' ? marked.parse(msg.text) : msg.text"
+          >
           </div>
           <div v-if="msg.sender === 'bot' && msg.options" class="options-wrapper">
             <button 
@@ -55,6 +59,10 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue';
+import axios from 'axios';
+import { marked } from 'marked';
+
+const apiBase = 'http://localhost:3000/api';
 
 const props = defineProps({
   isOpen: Boolean
@@ -74,48 +82,68 @@ const messages = ref([
   }
 ]);
 
-const scrollToBottom = async () => {
+const scrollToBottom = async (targetIndex = null) => {
   await nextTick();
+  if (targetIndex !== null) {
+    const el = document.getElementById(`msg-${targetIndex}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+  }
+  
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
 };
 
-const sendMessage = (text) => {
+const sendMessage = async (text) => {
   if (!text || !text.trim()) return;
+  
+  const userText = text.trim();
   
   // Add user message
   messages.value.push({
     sender: 'user',
-    text: text.trim()
+    text: userText
   });
   
   newMessage.value = '';
   scrollToBottom();
   
-  // Mock AI response
+  // Call real Gemini AI via backend
   isTyping.value = true;
-  setTimeout(() => {
+  try {
+    // Gemini requires history to start with a 'user' message.
+    // Our first message is always a bot welcome, so we filter it out.
+    const historyToSend = messages.value.slice(0, -1).filter(m => {
+      // If messages starts with bot, this logic will exclude it until first user msg
+      return true; // We'll rely on backend pop() for the very first model msg
+    });
+
+    const res = await axios.post(`${apiBase}/chat`, {
+      message: userText,
+      history: historyToSend
+    });
+    
+    messages.value.push({
+      sender: 'bot',
+      text: res.data.reply
+    });
+  } catch (err) {
+    console.error('Chat error:', err);
+    messages.value.push({
+      sender: 'bot',
+      text: "I'm having trouble connecting to the AI services. Please make sure the servers are running!"
+    });
+  } finally {
     isTyping.value = false;
-    generateMockResponse(text);
-    scrollToBottom();
-  }, 1000);
-};
-
-const generateMockResponse = (userInput) => {
-  const input = userInput.toLowerCase();
-  let botReply = "I can certainly help with that! Let's explore your options in the Dashboard.";
-  
-  if (input.includes('university') || input.includes('suggest')) {
-    botReply = "Based on your 8.5 GPA, I recommend looking into Tier 1 universities in the US. Shall we navigate to the AI Career Navigator?";
-  } else if (input.includes('loan')) {
-    botReply = "Education loans typically range from 8-12% interest. Our Finance section has some pre-approved offers for you without collateral. Check out HDFC Credila!";
-  } else if (input.includes('chance') || input.includes('admission')) {
-    botReply = "Your admission chances are currently around 75%. Improving your Statement of Purpose (SOP) could boost this to 85% or higher.";
+    // Scroll to the start of the bot's new message instead of the absolute bottom
+    scrollToBottom(messages.value.length - 1);
   }
-
-  messages.value.push({ sender: 'bot', text: botReply });
 };
+
+// Removed generateMockResponse as we are using real Gemini AI now
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) scrollToBottom();
@@ -137,15 +165,18 @@ watch(() => props.isOpen, (newVal) => {
 }
 
 .chatbot-window {
-  width: 350px;
-  height: 500px;
+  width: 450px;
+  height: 650px;
+  max-width: 90vw;
+  max-height: 80vh;
   background-color: var(--surface-color);
-  border-radius: 16px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border-color);
+  backdrop-filter: blur(10px);
   animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -225,10 +256,10 @@ watch(() => props.isOpen, (newVal) => {
 }
 
 .message {
-  padding: 0.75rem 1rem;
-  border-radius: 16px;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  padding: 0.85rem 1.25rem;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .message.user {
@@ -242,6 +273,25 @@ watch(() => props.isOpen, (newVal) => {
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-bottom-left-radius: 4px;
+}
+
+/* Markdown Styling inside blocks */
+:deep(.message.bot p) {
+  margin: 0 0 0.75rem 0;
+}
+:deep(.message.bot p:last-child) {
+  margin-bottom: 0;
+}
+:deep(.message.bot ul), :deep(.message.bot ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+:deep(.message.bot li) {
+  margin-bottom: 0.35rem;
+}
+:deep(.message.bot strong) {
+  color: var(--primary-color);
+  font-weight: 700;
 }
 
 .options-wrapper {
@@ -283,10 +333,10 @@ watch(() => props.isOpen, (newVal) => {
 
 .chatbot-input {
   display: flex;
-  padding: 1rem;
+  padding: 1.25rem;
   background-color: var(--surface-color);
   border-top: 1px solid var(--border-color);
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .chatbot-input input {
