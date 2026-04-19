@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+.chat-container {
+  @apply flex flex-col h-full;
+}
+
+.message {
+  @apply px-4 py-3 rounded-lg mb-2 max-w-xs;
+}
+
+.message.user {
+  @apply bg-blue-500 text-white ml-auto;
+}
+
+.message.assistant {
+  @apply bg-gray-200 text-gray-900;
+}
+
+.progress-bar {
+  @apply h-4 bg-gray-200 rounded-full overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full bg-green-500 transition-all duration-300;
+}
+
+.btn {
+  @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-blue-500 text-white hover:bg-blue-600;
+}
+
+.btn-secondary {
+  @apply bg-green-500 text-white hover:bg-green-600;
+}
+
+.btn-disabled {
+  @apply bg-gray-300 text-gray-500 cursor-not-allowed;
+}
