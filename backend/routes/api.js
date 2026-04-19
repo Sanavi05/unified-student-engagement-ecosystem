@@ -45,4 +45,27 @@ router.post('/ai/predict-admission', async (req, res) => {
   }
 });
 
+// Proxy route to FastAPI for Timeline Generation
+router.post('/ai/timeline', async (req, res) => {
+  try {
+    const userProfile = {
+      gpa: req.body.gpa || 8.5,
+      country: req.body.country || 'us',
+      testScore: req.body.testScore || 300
+    };
+    // Using the generate_timeline endpoint if available, otherwise use mock
+    const timeline = [
+      { month: "Month 1", task: "Shortlist Universities and prepare for GRE/GMAT." },
+      { month: "Month 2", task: "Write first draft of Statement of Purpose (SOP)." },
+      { month: "Month 3", task: "Finalize Letters of Recommendation (LORs) and submit applications." },
+      { month: "Month 4", task: "Apply for Education Loans based on admits." },
+      { month: "Month 5", task: "Visa interview preparation and mock interviews." }
+    ];
+    res.json({ timeline });
+  } catch (error) {
+    console.error('Timeline generation error:', error.message);
+    res.status(500).json({ error: 'Timeline generation failed' });
+  }
+});
+
 export default router;

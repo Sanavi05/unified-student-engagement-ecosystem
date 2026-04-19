@@ -1,10 +1,19 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from llm_mock import MockLLMProvider
+from llm_gemini import GeminiProvider
 import uvicorn
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="EduPath AI Service")
-llm = MockLLMProvider()
+try:
+    llm = GeminiProvider()
+except ValueError as e:
+    print(f"⚠️ Error initializing Gemini: {e}")
+    print("Make sure GEMINI_API_KEY is set in your .env file")
+    raise
 
 class RecommendationRequest(BaseModel):
     gpa: float

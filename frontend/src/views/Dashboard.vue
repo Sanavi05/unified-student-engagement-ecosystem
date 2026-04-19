@@ -52,10 +52,54 @@
           </div>
         </li>
       </ul>
-      <button class="btn-primary mt-1">Generate Application Timeline</button>
+      <button class="btn-primary mt-1" @click="generateTimeline">Generate Application Timeline</button>
+    </div>
+
+    <!-- Generated Timeline Display -->
+    <div v-if="timeline.length" class="timeline-section card mt-2">
+      <h3>📅 Your Application Timeline</h3>
+      <div class="timeline-container">
+        <div v-for="(item, index) in timeline" :key="index" class="timeline-item">
+          <div class="timeline-marker" :style="{ backgroundColor: getColor(index) }">
+            {{ index + 1 }}
+          </div>
+          <div class="timeline-content">
+            <h4>{{ item.month }}</h4>
+            <p>{{ item.task }}</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue';
+import axios from 'axios';
+
+const apiBase = 'http://localhost:3000/api';
+const timeline = ref([]);
+
+const generateTimeline = async () => {
+  try {
+    const userProfile = {
+      gpa: 8.5,
+      country: 'us'
+    };
+    const res = await axios.post(`${apiBase}/ai/timeline`, userProfile);
+    timeline.value = res.data.timeline;
+    console.log('Generated Timeline:', timeline.value);
+  } catch (err) {
+    console.error(err);
+    alert('Failed to generate timeline. Ensure backend and AI services are running.');
+  }
+};
+
+const getColor = (index) => {
+  const colors = ['#6366f1', '#f59e0b', '#ef4444', '#10b981', '#3b82f6'];
+  return colors[index % colors.length];
+};
+</script>
 
 <style scoped>
 .dashboard {
@@ -150,6 +194,80 @@
 
 .mt-1 { margin-top: 1rem; }
 .mt-2 { margin-top: 2rem; }
+
+/* Timeline Styles */
+.timeline-section {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-left: 4px solid var(--primary-color);
+}
+
+.timeline-section h3 {
+  margin-bottom: 2rem;
+  font-size: 1.25rem;
+}
+
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-left: 2rem;
+  position: relative;
+}
+
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--primary-color), var(--secondary-color));
+  opacity: 0.3;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  position: relative;
+}
+
+.timeline-marker {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+  margin-left: -2.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-content {
+  flex: 1;
+  padding: 1rem;
+  background-color: var(--bg-color);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.timeline-content h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.timeline-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

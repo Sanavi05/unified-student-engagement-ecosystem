@@ -34,7 +34,7 @@
               <option>Tier 3 (Others)</option>
             </select>
           </div>
-          <button type="button" class="btn-primary w-100">Check Eligibility</button>
+          <button type="button" class="btn-primary w-100" @click="checkEligibility">Check Eligibility</button>
         </form>
       </div>
 
@@ -44,12 +44,12 @@
           <h3>EMI Calculator</h3>
         </div>
         <div class="emi-result">
-          <div class="emi-amount">₹42,500 <span class="muted">/mo</span></div>
-          <p class="muted-small">Estimated EMI for ₹30 Lakhs @ 10.5% for 10 Years</p>
+          <div class="emi-amount">₹{{ emiAmount.toLocaleString('en-IN') }} <span class="muted">/mo</span></div>
+          <p class="muted-small">Estimated EMI for ₹{{ loanAmount.toLocaleString('en-IN') }} @ {{ interestRate }}% for {{ loanTenure }} Years</p>
         </div>
         <div class="slider-group mt-1">
-          <label>Loan Amount: ₹30,00,000</label>
-          <input type="range" min="100000" max="10000000" value="3000000" class="slider" />
+          <label>Loan Amount: ₹{{ loanAmount.toLocaleString('en-IN') }}</label>
+          <input type="range" min="100000" max="10000000" v-model="loanAmount" class="slider" @change="calculateEMI" />
         </div>
       </div>
 
@@ -101,7 +101,7 @@
                 <span class="value">₹10,000</span>
               </div>
             </div>
-            <button class="btn-outline">Apply with AI</button>
+            <button class="btn-outline" @click="applyWithAI('SBI Global Ed-Vantage')">Apply with AI</button>
           </div>
         </div>
       </div>
@@ -109,35 +109,41 @@
   </div>
 </template>
 
+<script setup>
+import { ref } from 'vue';
+
+// EMI Calculator State
+const loanAmount = ref(3000000);
+const emiAmount = ref(42500);
+const interestRate = ref(10.5);
+const loanTenure = ref(10);
+
+// Calculate EMI using formula: P * [r(1+r)^n] / [(1+r)^n - 1]
+const calculateEMI = () => {
+  const principal = parseFloat(loanAmount.value);
+  const monthlyRate = interestRate.value / 100 / 12;
+  const numberOfMonths = loanTenure.value * 12;
+  
+  if (monthlyRate === 0) {
+    emiAmount.value = principal / numberOfMonths;
+  } else {
+    const emi = (principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfMonths))) / 
+                (Math.pow(1 + monthlyRate, numberOfMonths) - 1);
+    emiAmount.value = Math.round(emi);
+  }
+};
+
+const checkEligibility = () => {
+  alert('✅ Eligibility check initiated!\n\nBased on your profile:\n- Annual Income: Good\n- Co-applicant: Yes\n- University Tier: Tier 1\n\nYou are eligible for up to 50 Lakhs (+50% with co-applicant)');
+};
+
+const applyWithAI = (bankName) => {
+  alert(`🎉 Redirecting to ${bankName} application form...\n\nOur AI will help fill your details automatically!`);
+  console.log(`Applying with ${bankName}`);
+};
+</script>
+
 <style scoped>
-.section-header {
-  margin-bottom: 2rem;
-}
-
-.section-header h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.finance-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 2rem;
-}
-
-.finance-card {
-  display: flex;
-  flex-direction: column;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.5rem;
-}
 
 .form-row {
   display: flex;

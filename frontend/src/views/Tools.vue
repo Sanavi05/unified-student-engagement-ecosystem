@@ -101,7 +101,7 @@
 import { ref } from 'vue';
 import axios from 'axios';
 
-const apiBase = 'http://localhost:5000/api';
+const apiBase = 'http://localhost:3000/api';
 
 // Career Navigator State
 const careerForm = ref({ gpa: null, country: '' });
